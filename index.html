@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>JSON ↔ Texto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 24px 16px;
+      color: #e8e4f0;
+    }
+    .container { max-width: 600px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header .emoji { font-size: 34px; margin-bottom: 6px; }
+    .header h1 { font-size: 21px; font-weight: 700; color: #c9b8ff; letter-spacing: -0.5px; }
+    .header p { margin-top: 6px; font-size: 13px; color: #9988bb; }
+    .byline { margin-top: 8px; font-size: 15px; color: #9988bb; }
+    .byline span { font-family: 'Dancing Script', cursive; font-size: 20px; color: #c9b8ff; }
+
+    .switch {
+      display: flex;
+      background: rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 22px;
+      gap: 4px;
+    }
+    .switch button {
+      flex: 1; padding: 10px 0;
+      border-radius: 9px; border: none;
+      font-size: 14px; cursor: pointer;
+      transition: all 0.2s; color: #9988bb;
+      background: transparent;
+    }
+    .switch button.active {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      color: white; font-weight: 700;
+    }
+
+    label.field-label {
+      display: block; font-size: 12px; color: #9988bb;
+      margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase;
+    }
+    textarea {
+      width: 100%; height: 180px;
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid rgba(201,184,255,0.2);
+      border-radius: 12px; padding: 12px 14px;
+      color: #e8e4f0; font-size: 13px;
+      resize: vertical; outline: none;
+      transition: border 0.2s;
+    }
+    textarea.error { border-color: #ff6b6b; }
+    textarea.mono { font-family: 'Courier New', monospace; }
+
+    .error-msg {
+      margin-top: 8px; padding: 8px 12px;
+      background: rgba(255,107,107,0.15);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 8px; color: #ff9999; font-size: 13px;
+    }
+
+    .actions { display: flex; gap: 10px; margin-top: 14px; }
+    .btn-main {
+      flex: 1; padding: 12px 0;
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      border: none; border-radius: 10px;
+      color: white; font-weight: 700; font-size: 15px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-main:disabled { background: rgba(139,92,246,0.4); cursor: not-allowed; }
+    .btn-clear {
+      padding: 12px 18px;
+      background: rgba(255,255,255,0.07);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 10px; color: #9988bb;
+      font-size: 14px; cursor: pointer;
+    }
+
+    .loading { margin-top: 20px; text-align: center; color: #9988bb; font-size: 14px; display: none; }
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid rgba(201,184,255,0.2);
+      border-top: 2px solid #c9b8ff; border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .output { margin-top: 22px; display: none; }
+    .output-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 6px;
+    }
+    .btn-copy {
+      padding: 4px 12px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px; color: #9988bb;
+      font-size: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-copy.copied {
+      background: rgba(74,222,128,0.15);
+      border-color: rgba(74,222,128,0.4); color: #4ade80;
+    }
+    .result-box {
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid rgba(201,184,255,0.15);
+      border-radius: 12px; padding: 14px 16px;
+      font-size: 15px; line-height: 1.75; color: #ddd6f0;
+    }
+    .result-box.mono { font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="emoji">⚡</div>
+    <h1>Conversor JSON ↔ Texto</h1>
+    <p>Powered by IA · Conversión natural</p>
+    <p class="byline">by <span>Gissele Geo</span></p>
+  </div>
+
+  <div class="switch">
+    <button class="active" onclick="setMode('json-to-text')">📄 JSON → Texto</button>
+    <button onclick="setMode('text-to-json')">🗂️ Texto → JSON</button>
+  </div>
+
+  <label class="field-label" id="input-label">Tu JSON</label>
+  <textarea id="input" class="mono" placeholder='{"nombre": "Ana", "edad": 25}'></textarea>
+  <div class="error-msg" id="error" style="display:none"></div>
+
+  <div class="actions">
+    <button class="btn-main" id="btn-convert" onclick="convert()">Convertir ✨</button>
+    <button class="btn-clear" onclick="clear()">Limpiar</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div> La IA está procesando...
+  </div>
+
+  <div class="output" id="output">
+    <div class="output-header">
+      <label class="field-label" id="output-label" style="margin:0">Texto natural</label>
+      <button class="btn-copy" id="btn-copy" onclick="copy()">Copiar</button>
+    </div>
+    <div class="result-box" id="result"></div>
+  </div>
+</div>
+
+<script>
+  let currentMode = "json-to-text";
+
+  function setMode(mode) {
+    currentMode = mode;
+    const btns = document.querySelectorAll('.switch button');
+    btns[0].classList.toggle('active', mode === 'json-to-text');
+    btns[1].classList.toggle('active', mode === 'text-to-json');
+
+    const isJ2T = mode === 'json-to-text';
+    document.getElementById('input-label').textContent = isJ2T ? 'Tu JSON' : 'Tu texto';
+    document.getElementById('input').className = isJ2T ? 'mono' : '';
+    document.getElementById('input').placeholder = isJ2T
+      ? '{\n  "nombre": "Ana",\n  "edad": 25\n}'
+      : 'Ej: Ana tiene 25 años, vive en Xalapa...';
+    document.getElementById('output-label').textContent = isJ2T ? 'Texto natural' : 'JSON generado';
+
+    document.getElementById('input').value = '';
+    document.getElementById('output').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+  }
+
+  async function convert() {
+    const input = document.getElementById('input').value.trim();
+    const errorEl = document.getElementById('error');
+    const loadingEl = document.getElementById('loading');
+    const outputEl = document.getElementById('output');
+    const resultEl = document.getElementById('result');
+    const btn = document.getElementById('btn-convert');
+
+    errorEl.style.display = 'none';
+    outputEl.style.display = 'none';
+
+    if (!input) {
+      errorEl.textContent = currentMode === 'json-to-text' ? 'Pega tu JSON primero 👀' : 'Escribe tu texto primero 👀';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    if (currentMode === 'json-to-text') {
+      try { JSON.parse(input); }
+      catch { errorEl.textContent = 'Ese JSON está chueco, revísalo 🔍'; errorEl.style.display = 'block'; return; }
+    }
+
+    btn.disabled = true;
+    loadingEl.style.display = 'block';
+
+    try {
+      const res = await fetch('/.netlify/functions/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input, mode: currentMode })
+      });
+      const data = await res.json();
+
+      resultEl.textContent = data.result;
+      resultEl.className = currentMode === 'text-to-json' ? 'result-box mono' : 'result-box';
+      outputEl.style.display = 'block';
+      document.getElementById('btn-copy').className = 'btn-copy';
+      document.getElementById('btn-copy').textContent = 'Copiar';
+    } catch {
+      errorEl.textContent = 'Algo salió mal, intenta de nuevo';
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      loadingEl.style.display = 'none';
+    }
+  }
+
+  function clear() {
+    document.getElementById('input').value = '';
+    document.getElementById('output').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+  }
+
+  function copy() {
+    const text = document.getElementById('result').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✓ Copiado';
+      btn.className = 'btn-copy copied';
+      setTimeout(() => { btn.textContent = 'Copiar'; btn.className = 'btn-copy'; }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
